@@ -1,6 +1,7 @@
 #include <M5StickCPlus.h>
 #include <IRrecv.h>
 #include <IRsend.h>
+#include "commnads.h"
 
 enum RemoconState:int{
   Recieve,
@@ -117,7 +118,6 @@ void drawState()
 
 void setup() {
   M5.begin();
-  //setCpuFrequencyMhz(40);//cpuクロックを下げとく
 
   M5.Axp.ScreenBreath(9);
   M5.Lcd.setRotation(1);
@@ -126,6 +126,9 @@ void setup() {
   // GPIO37(M5StickCのHOMEボタン)かGPIO39(M5StickCの右ボタン)がLOWになったら起動
   pinMode(GPIO_NUM_37, INPUT_PULLUP);
   gpio_wakeup_enable(GPIO_NUM_37, GPIO_INTR_LOW_LEVEL);
+
+  //デフォルトは電源ON,首振り
+  commands = {kCommandPower,kCommandSwing};
 
   delay(500);
   irReciever.enableIRIn();
