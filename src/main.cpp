@@ -2,6 +2,7 @@
 #include <IRrecv.h>
 #include <IRsend.h>
 #include "commnads.h"
+#include "micFunc.h"
 
 enum RemoconState:int{
   Recieve,
@@ -9,12 +10,13 @@ enum RemoconState:int{
   TimerMode,
   SendTest,
   BatteryCheck,
+  MicCheck,
   Max
 };
 
 const uint8_t kIRRecievePin = 33;
 const uint8_t kIRSendPin = 32;
-const std::string stateStr[] = {"IR Recieve","Timer Set","Enable Timer","Send  Test","Battery"};
+const std::string stateStr[] = {"IR Recieve","Timer Set","Enable Timer","Send  Test","Battery","Mic Test"};
 
 IRrecv irReciever(kIRRecievePin);
 IRsend irSender(kIRSendPin);
@@ -22,6 +24,7 @@ IRsend irSender(kIRSendPin);
 uint16_t timerHour = 1;
 RemoconState state = RemoconState::Recieve;
 std::vector<uint64_t> commands;
+xTaskHandle hTimerTask = nullptr;
 
 void recieveState()
 {
@@ -118,6 +121,7 @@ void drawState()
 
 void setup() {
   M5.begin();
+  //setCpuFrequencyMhz(40);//40Mhzより低いとIRがうまく取得できなかった
 
   M5.Axp.ScreenBreath(9);
   M5.Lcd.setRotation(1);
@@ -126,6 +130,9 @@ void setup() {
   // GPIO37(M5StickCのHOMEボタン)かGPIO39(M5StickCの右ボタン)がLOWになったら起動
   pinMode(GPIO_NUM_37, INPUT_PULLUP);
   gpio_wakeup_enable(GPIO_NUM_37, GPIO_INTR_LOW_LEVEL);
+
+  //マイク初期化
+  i2sInit();
 
   //デフォルトは電源ON,首振り
   commands = {kCommandPower,kCommandSwing};
@@ -151,6 +158,19 @@ void loop() {
     state = (RemoconState)stateVal;
 
     drawState();
+
+    //マイクタスクの切り替え
+    if(state == RemoconState::MicCheck){
+      xTaskCreate(mic_record_task, "mic_record_task", 2048, NULL, 1, &hTimerTask);
+    }
+    else
+    {
+      if(hTimerTask != nullptr)
+      {
+        vTaskDelete(hTimerTask);
+        hTimerTask = nullptr;
+      }
+    }
 
     //1秒待つ
     delay(1000);
@@ -203,8 +223,8 @@ void loop() {
     M5.Lcd.drawCentreString(txt,M5.Lcd.width()/2,M5.Lcd.height()/2,1);
     delay(250);
     break;
-  
   default:
+    delay(100);
     break;
   }
 
