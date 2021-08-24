@@ -4,6 +4,9 @@
 #include "commnads.h"
 #include "micFunc.h"
 
+//IRUNITを接続しない場合は消す
+//#define IR_UNIT
+
 enum RemoconState:int{
   Recieve,
   Setting,
@@ -14,11 +17,18 @@ enum RemoconState:int{
   Max
 };
 
+#ifndef IR_UNIT
+const uint8_t kIRSendPin = 9;
+#else
 const uint8_t kIRRecievePin = 33;
 const uint8_t kIRSendPin = 32;
+#endif
+
 const std::string stateStr[] = {"IR Recieve","Timer Set","Enable Timer","Send  Test","Battery","Mic Test"};
 
+#ifdef IR_UNIT
 IRrecv irReciever(kIRRecievePin);
+#endif
 IRsend irSender(kIRSendPin);
 
 uint16_t timerHour = 1;
@@ -28,6 +38,18 @@ xTaskHandle hTimerTask = nullptr;
 
 void recieveState()
 {
+#ifndef IR_UNIT
+  M5.Lcd.fillScreen(BLACK);
+  M5.Lcd.setCursor(0, 0, 1);
+  M5.Lcd.println("current commands");
+  char txt[64];
+  for (int i=0;i<commands.size();i++)
+  {
+    sprintf(txt, " %d: %" PRIu64 ,i,commands[i]);
+    M5.Lcd.println(txt);
+  }
+  delay(250);
+#else
   //Aボタン押したらコマンドリセット
   if(M5.BtnA.wasPressed()){
     commands.clear();
@@ -65,6 +87,7 @@ void recieveState()
 
     irReciever.resume();
   }
+#endif
 }
 
 void settingState()
@@ -138,7 +161,9 @@ void setup() {
   commands = {kCommandPower,kCommandSwing};
 
   delay(500);
+#ifdef IR_UNIT
   irReciever.enableIRIn();
+#endif
   irSender.begin();
 
   delay(500);
@@ -197,6 +222,7 @@ void loop() {
       M5.Axp.ScreenBreath(0);
       esp_sleep_enable_gpio_wakeup();
       esp_sleep_enable_timer_wakeup(SLEEP_HR(timerHour));
+      //esp_sleep_enable_timer_wakeup(SLEEP_SEC(timerHour));
       esp_light_sleep_start();
 
       //起きたら送信
