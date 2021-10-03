@@ -144,7 +144,7 @@ void drawState()
 
 void setup() {
   M5.begin();
-  //setCpuFrequencyMhz(40);//40Mhzより低いとIRがうまく取得できなかった
+  setCpuFrequencyMhz(80);//80Mhzより低いとIRがうまく取得できなかった
 
   M5.Axp.ScreenBreath(9);
   M5.Lcd.setRotation(1);
@@ -220,13 +220,17 @@ void loop() {
 
       //スリープセット
       M5.Axp.ScreenBreath(0);
+      Serial.printf("enter sleep:%ld\n",SLEEP_SEC(timerHour));
+
       esp_sleep_enable_gpio_wakeup();
       esp_sleep_enable_timer_wakeup(SLEEP_HR(timerHour));
-      //esp_sleep_enable_timer_wakeup(SLEEP_SEC(timerHour));
+      //esp_sleep_enable_timer_wakeup(SLEEP_SEC(timerHour)); //秒数テスト
       esp_light_sleep_start();
 
       //起きたら送信
-      M5.Axp.ScreenBreath(9);
+      Serial.println("wakeup sleep");
+      M5.Axp.begin();
+      M5.Axp.ScreenBreath(8);
       send();
       delay(2000);
 
